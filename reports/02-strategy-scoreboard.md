@@ -19,14 +19,14 @@ This is the master decision table. It should be updated whenever a strategy chan
 | Strategy C | Alternative strategy family | Failed selection process | **Rejected** | Did not survive testing. Exact legacy artifacts are not yet preserved here. |
 | Strategy D / early D work | Microstructure/short-horizon research family | Exploratory | **Superseded by D2/D3 diagnostics** | Research branch rather than validated strategy. |
 | Strategy D2 | Candidate microstructure patterns | Training patterns failed holdout / walk-forward | **Rejected** | 12 patterns selected in training; 0 net-positive on holdout; 0 walk-forward folds produced a net-positive pattern. |
-| Strategy D3 | CoinDCX order-book/trade-flow microstructure | Rolling forward diagnostic reached 1 eligible training pattern and 1 holdout-tested pattern, but 0 net-positive holdout patterns as of 2026-09-01 | **Diagnostic, current formulation failing promotion gate** | A training pattern can now qualify, but it fails net profitability on holdout. Do not promote to paper trading. Confirm a clean full 168-hour window, then close the current hypothesis set or replace it only with a separately predeclared D3.x design. |
+| Strategy D3 | CoinDCX order-book/trade-flow microstructure | 405.54 hours of forward recording; 1 eligible training pattern; 1 holdout-tested pattern; 0 net-positive holdout patterns | **Rejected in current formulation** | The test has more than enough forward data to evaluate the locked 168-hour window. A training pattern qualified but failed holdout net profitability. Do not paper trade or retune this hypothesis set. Preserve data for future predeclared D3.x research only. |
 | TensorTrade RL branch | Reinforcement-learning framework | Feasibility review only | **Deferred** | Heavy training stack adds complexity and resource pressure; 1 CPU / 1 GB Linode is the hard operating constraint. No need while deterministic research remains unresolved. |
 | ZipLime verifier | Independent Python backtest implementation | Not started | **Backlog** | Potentially valuable to independently reproduce locked A+ without changing A+ itself. |
 
 ## Current ranking
 
 1. **A+** - only retained tradable candidate; currently in forward paper trading.
-2. **D3** - current formulation has failed its latest holdout net-profitability gate; keep only as diagnostic/data infrastructure until the full-window check is completed.
+2. **D3 current formulation** - rejected after >405 hours of forward recording and failure of the holdout net-profitability gate.
 3. Everything else tested so far - rejected, superseded, deferred, or not yet started.
 
 ## Promotion logic
@@ -50,8 +50,16 @@ A+ was selected because it was the only branch that survived enough of this proc
 
 The absence of paper trades so far is not itself evidence against A+. A low-frequency strategy with explicit market-regime filters is expected to spend substantial time inactive. Its paper evaluation begins when valid signals occur; inactivity should not be converted into artificial trades by relaxing the locked rules.
 
-## Why D3 has not been promoted
+## Why D3 was rejected
 
-D3 asks whether a measurable short-horizon microstructure effect exists in genuinely unseen CoinDCX data and whether that effect is economically large enough after costs.
+D3 asked whether a measurable short-horizon single-venue CoinDCX microstructure effect exists and whether that effect is economically large enough after costs.
 
-The latest rolling diagnostic is more informative than the early 32-hour snapshot: one pattern now passes training eligibility and reaches holdout, but it is not net positive there. That is a validation failure, not a near-pass. Unless a data-quality problem explains it, the current hypothesis set should not be tuned repeatedly against the same accumulated sample.
+The final current-formulation evidence is clear enough:
+
+- recorded duration: 405.54 hours;
+- all four assets available;
+- one pattern passed training eligibility;
+- that pattern reached holdout;
+- zero patterns were net positive on holdout.
+
+This is a validation failure, not a near-pass. The existing rules should not be repeatedly retuned against the same accumulated data. A future D3.x branch must be a new predeclared hypothesis and should reserve a new untouched forward holdout period.
