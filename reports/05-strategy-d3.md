@@ -4,6 +4,10 @@
 
 **Diagnostic / forward research only. Not approved for paper trading.**
 
+As of the 2026-09-01 rolling diagnostic, the current D3 formulation has **failed the holdout net-profitability promotion gate**: one training pattern became eligible and was evaluated on holdout, but zero holdout patterns were net positive.
+
+This does not justify loosening thresholds or tuning the same sample retrospectively. The current hypothesis set should either be closed after confirming the recorder has supplied a full clean 168-hour window, or replaced by a separately specified D3.x hypothesis before testing.
+
 ## Current assumption lock
 
 The Linode implementation explicitly states:
@@ -37,9 +41,7 @@ The current D3 framework uses forward horizons including:
 
 Execution economics are evaluated against realistic trading costs rather than gross price movement alone.
 
-## Current forward snapshot
-
-Latest recorded status from 2026-08-16:
+## Initial forward snapshot: 2026-08-16
 
 - recorder runtime: ~32 hours;
 - book snapshots: ~73,076;
@@ -50,9 +52,36 @@ Latest recorded status from 2026-08-16:
 - `selected_patterns_with_holdout`: 0;
 - `holdout_net_positive_patterns`: 0.
 
-The diagnostic command reports `diagnostic_hours: 168`, but this is the configured maximum analysis window, not proof that 168 hours have already been recorded.
+The diagnostic command reports `diagnostic_hours: 168`, but this is the configured maximum analysis window, not by itself proof that 168 hours were recorded.
 
-## Current signal observations
+## Rolling diagnostic snapshot: 2026-09-01
+
+Latest reported result:
+
+```json
+{
+  "status": "COMPLETE",
+  "diagnostic_hours": 168,
+  "assets": ["BTC", "ETH", "SOL", "XRP"],
+  "assets_usable": 4,
+  "eligible_training_patterns": 1,
+  "selected_patterns_with_holdout": 1,
+  "holdout_net_positive_patterns": 0,
+  "assumption_lock": "Single-venue CoinDCX microstructure only. No cross-exchange lead/lag assumption.",
+  "interpretation_lock": "Diagnostic only. No live order placement and no strategy approval from training results alone."
+}
+```
+
+Interpretation:
+
+1. D3 now finds at least one training pattern that satisfies the training eligibility rules.
+2. That pattern was eligible for holdout evaluation.
+3. It did **not** remain net positive on holdout.
+4. Therefore the current D3 formulation still has no strategy that passes its own promotion rules.
+
+This is a more informative failure than the first ~32-hour snapshot: the issue is no longer merely that nothing qualifies in training. A pattern can qualify in-sample and then fail out-of-sample economics, which is exactly the behavior the holdout gate is designed to catch.
+
+## Early signal observations
 
 Early diagnostic inspection showed that BTC buy-side imbalance had some positive **gross** directional behavior at several horizons. Representative early values observed before the full 7-day sample included approximately:
 
@@ -64,7 +93,7 @@ Early diagnostic inspection showed that BTC buy-side imbalance had some positive
 | Holdout | 300s | +0.551 bps | 2.43 | 58.3% |
 | Holdout | 900s | +0.895 bps | 2.90 | 63.4% |
 
-These are **not strategy approval results**. They illustrate an important distinction: a statistically interesting gross directional effect can still be economically untradable.
+These were **not strategy approval results**. They illustrated an important distinction: a statistically interesting gross directional effect can still be economically untradable.
 
 With the locked cost assumptions, fee + slippage alone are roughly 9 bps round trip before any additional spread effect. A gross edge below 1 bp is therefore not enough for a taker-style strategy.
 
@@ -90,14 +119,14 @@ slippage_per_side = 0.0010
 
 This created absurdly punitive net results and was not the locked research cost model.
 
-The active configuration has since been corrected to:
+The active configuration was subsequently verified as:
 
 ```toml
 fee_per_side = 0.00025
 slippage_per_side = 0.00020
 ```
 
-The raw recorded D3 market data was unaffected and remains valid. Diagnostics must simply be rerun with the corrected costs.
+The raw recorded D3 market data was unaffected by the earlier error.
 
 ## Resource observations
 
@@ -114,19 +143,16 @@ Longer-term diagnostics require care because loading an ever-growing SQLite data
 
 ## Current decision
 
-Do **not** paper trade D3 yet.
+Do **not** paper trade D3.
 
-Continue recording untouched forward data until at least the first full 7-day window is complete. Then rerun the diagnostic under the corrected cost model and evaluate:
+The latest rolling diagnostic has one training-selected pattern and zero net-positive holdout patterns. The current strategy formulation therefore fails its validation gate.
 
-- eligible training patterns;
-- holdout survival;
-- net expectancy;
-- profit factor;
-- win rate;
-- stability by day;
-- stability by asset;
-- stability by horizon;
-- score/strength monotonicity;
-- whether any effect is large enough to overcome realistic costs.
+Recommended handling:
 
-If no pattern survives, D3 should be rejected or redesigned based on a new predeclared hypothesis, not retrospectively tuned against this dataset.
+1. confirm `recorded_hours` is comfortably above 168 and the relevant 168-hour window has no material data gaps;
+2. preserve the current report/result without parameter changes;
+3. treat the present D3 hypothesis set as failed if the full-window/data-quality check is clean;
+4. keep the lightweight recorder running if desired because the raw microstructure dataset remains useful infrastructure;
+5. only test a D3.x successor after writing a new hypothesis and thresholds before looking at its result.
+
+Do not repeatedly retune the existing D3 rules against the accumulated dataset until something turns green. That would convert the holdout set into training data and destroy the value of the experiment.
